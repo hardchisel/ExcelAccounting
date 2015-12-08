@@ -95,6 +95,29 @@ namespace ExcelAccounting
         public static double XA_Value(object[,] asset_table, object[,] price_array, string asset_code, string value_asset_code, double price_date)
         {
             return 0;
+            //if (this == valueAsset)
+            //    return 1;
+
+            //Asset asset = this;
+            //decimal rate = 1;
+            //// work down from sell asset
+            //while (asset.PricingAsset != asset) // otherwise its just 1
+            //{
+            //    rate = rate * asset.Price(valueDate);
+            //    if (asset.PricingAsset == valueAsset)
+            //        return rate; // complete rate was found 
+            //    asset = asset.PricingAsset;
+            //}
+            //// work back from buy asset to final asset of previous step
+            //while (valueAsset.PricingAsset != valueAsset) // otherwise its just 1
+            //{
+            //    rate = rate / valueAsset.Price(valueDate);
+            //    if (valueAsset.PricingAsset == asset)
+            //        return rate; // complete rate was found 
+            //    valueAsset = valueAsset.PricingAsset;
+            //}
+            //// this should never be reached
+            //throw new System.ArgumentException(String.Format("No price found for {0}/{1} at {2}", valueAsset.Code, asset.Code, valueDate.ToShortDateString()));
         }
     }
 }
