@@ -8,6 +8,14 @@ using ExcelDna.Integration;
 
 namespace ExcelAccounting
 {
+    public class Asset
+    {
+        string code;
+        string name;
+        string base_code;
+        bool invert;
+    }
+
     public static class MyFunctions
     {
         [ExcelFunction(Description = "Version")]
@@ -94,7 +102,9 @@ namespace ExcelAccounting
         [ExcelFunction(Description = "Get asset value at specified date")]
         public static double XA_Value(object[,] asset_table, object[,] price_array, string asset_code, string value_asset_code, double price_date)
         {
-            return 0;
+            if (asset_code == value_asset_code)
+                return 1;
+
             //if (this == valueAsset)
             //    return 1;
 
@@ -118,6 +128,8 @@ namespace ExcelAccounting
             //}
             //// this should never be reached
             //throw new System.ArgumentException(String.Format("No price found for {0}/{1} at {2}", valueAsset.Code, asset.Code, valueDate.ToShortDateString()));
+
+            return 0;
         }
     }
 }
