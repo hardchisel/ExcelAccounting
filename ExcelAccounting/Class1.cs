@@ -24,23 +24,42 @@ namespace ExcelAccounting
         }
 
         [ExcelFunction(Description = "Get asset price at specified date")]
-        public static double XA_Price(object[,] price_array, string asset_code, double price_date)
+        public static double XA_Price(object[,] asset_table, object[,] price_array, string asset_code, double price_date)
         {
-            int rows = price_array.GetLength(0);
-            int cols = price_array.GetLength(1);
+            // find asset_code in asset_table
+            int asset_rows = asset_table.GetLength(0);
+            int asset_cols = asset_table.GetLength(1);
+
+            dynamic asset_base = null;
+            for (int asset_row = 0; asset_row < asset_rows; asset_row++)
+            {
+                dynamic code = asset_table[asset_row, 0];
+                if (code != null && code is string && code == asset_code)
+                { 
+                    asset_base = asset_table[asset_row, 2];
+                    break;
+                }
+            }
+
+            // if asset_code and base are the same, then price = 1 (i.e. USD/USD = 1 always)
+            if (asset_code == asset_base)
+                return 1;
+
+            int price_rows = price_array.GetLength(0);
+            int price_cols = price_array.GetLength(1);
 
             double price = 0;
-            for (int col = 0; col < cols; col++)
+            for (int price_col = 0; price_col < price_cols; price_col++)
             {
                 // check each column header (asset code)
-                dynamic col_name = price_array[0, col];
+                dynamic col_name = price_array[0, price_col];
                 if (col_name != null && col_name is string && col_name == asset_code)
                 {
                     // found a matching column, work down rows
-                    for (int row = 1; row < rows; row++)
+                    for (int price_row = 1; price_row < price_rows; price_row++)
                     {
                         // check each row's date
-                        dynamic row_date = price_array[row, 0];
+                        dynamic row_date = price_array[price_row, 0];
                         if (row_date != null && row_date is double && row_date <= price_date)
                         {
                             // check if we exceeded requested date
@@ -49,7 +68,7 @@ namespace ExcelAccounting
                             else
                             // found a candidate row
                             {
-                                if (row == (rows - 1) && price_date > row_date)
+                                if (price_row == (price_rows - 1) && price_date > row_date)
                                 {
                                     // we requested a future date
                                     price = 0;
@@ -58,7 +77,7 @@ namespace ExcelAccounting
                                 else
                                 {
                                     // this could be the price, so save it
-                                    dynamic price_candidate = price_array[row, col];
+                                    dynamic price_candidate = price_array[price_row, price_col];
                                     if (price_candidate != null && price_candidate is double)
                                         price = price_candidate;
                                 }
