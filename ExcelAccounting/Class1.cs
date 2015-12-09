@@ -152,7 +152,13 @@ namespace ExcelAccounting
             // work down from sell asset
             while (asset.base_code != asset.code) // otherwise its just 1
             {
-                rate *= XA_Price(asset_table, price_array, asset.code, price_date);
+                double price = XA_Price(asset_table, price_array, asset.code, price_date);
+                if (price == 0)
+                    return 0;
+                else if (asset.invert)
+                    rate /= price;
+                else
+                    rate *= price;
                 if (asset.base_code == value_asset_code)
                     return rate; // complete rate was found
                 asset = GetAsset(asset_table, asset.base_code);
@@ -161,7 +167,13 @@ namespace ExcelAccounting
             Asset value_asset = GetAsset(asset_table, value_asset_code);
             while (value_asset.base_code != value_asset.code) // otherwise its just 1
             {
-                rate /= XA_Price(asset_table, price_array, value_asset.code, price_date);
+                double price = XA_Price(asset_table, price_array, value_asset.code, price_date);
+                if (price == 0)
+                    return 0;
+                else if (value_asset.invert)
+                    rate *= price;
+                else
+                    rate /= price;
                 if (value_asset.base_code == asset.code)
                     return rate; // complete rate was found
                 value_asset = GetAsset(asset_table, value_asset.base_code);
