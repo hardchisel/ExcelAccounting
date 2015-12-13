@@ -14,6 +14,16 @@ namespace ExcelAccounting
         public string name;
         public string base_code;
         public bool invert;
+        public bool port;
+    }
+
+    public struct Transaction
+    {
+        public string port;
+        public double date;
+        public string asset;
+        public string account;
+        public double amount;
     }
 
     public static class MyFunctions
@@ -31,7 +41,6 @@ namespace ExcelAccounting
             return "Hello " + name + "!";
         }
 
-        [ExcelFunction(Description = "Get asset by code from asset_table")]
         private static Asset GetAsset(object[,] asset_table, string asset_code)
         {
             Asset asset;
@@ -39,27 +48,45 @@ namespace ExcelAccounting
             asset.name = "";
             asset.base_code = "";
             asset.invert = false;
+            asset.port = false;
 
             // find asset_code in asset_table
-            int asset_rows = asset_table.GetLength(0);
-            int asset_cols = asset_table.GetLength(1);
+            int rows = asset_table.GetLength(0);
+            int cols = asset_table.GetLength(1);
 
-            for (int asset_row = 0; asset_row < asset_rows; asset_row++)
+            for (int row = 0; row < rows; row++)
             {
-                dynamic code = asset_table[asset_row, 0];
+                dynamic code = asset_table[row, 0];
                 if (code != null && code is string && code == asset_code)
                 {
-                    asset.code = asset_table[asset_row, 0].ToString();
-                    asset.name = asset_table[asset_row, 1].ToString();
-                    asset.base_code = asset_table[asset_row, 2].ToString();
-                    dynamic invert = asset_table[asset_row, 3];
-                    if (invert is double && invert != 0)
-                        asset.invert = true;
+                    asset.code = asset_table[row, 0].ToString();
+                    asset.name = asset_table[row, 1].ToString();
+                    asset.base_code = asset_table[row, 2].ToString().ToString();
+                    asset.invert = GetBoolean(asset_table[row, 3]);
+                    asset.port = GetBoolean(asset_table[row, 4]);
                     break;
                 }
             }
 
             return asset;
+        }
+
+        // helper function to convert cell content to boolean
+        private static bool GetBoolean(dynamic cell)
+        {
+            if (cell is double && cell != 0)
+                return true;
+            else
+                return false; 
+        }
+
+        //helper function to convert cell content to double
+        private static double GetDouble(dynamic cell)
+        {
+            if (cell is double)
+                return cell;
+            else
+                return 0;
         }
 
         [ExcelFunction(Description = "Get asset price at specified date")]
@@ -117,69 +144,72 @@ namespace ExcelAccounting
             return price;
         }
 
-        //if (this == valueAsset)
-        //    return 1;
-
-        //Asset asset = this;
-        //decimal rate = 1;
-        //// work down from sell asset
-        //while (asset.PricingAsset != asset) // otherwise its just 1
-        //{
-        //    rate = rate * asset.Price(valueDate);
-        //    if (asset.PricingAsset == valueAsset)
-        //        return rate; // complete rate was found 
-        //    asset = asset.PricingAsset;
-        //}
-        //// work back from buy asset to final asset of previous step
-        //while (valueAsset.PricingAsset != valueAsset) // otherwise its just 1
-        //{
-        //    rate = rate / valueAsset.Price(valueDate);
-        //    if (valueAsset.PricingAsset == asset)
-        //        return rate; // complete rate was found 
-        //    valueAsset = valueAsset.PricingAsset;
-        //}
-        //// this should never be reached
-        //throw new System.ArgumentException(String.Format("No price found for {0}/{1} at {2}", valueAsset.Code, asset.Code, valueDate.ToShortDateString()));
-
         [ExcelFunction(Description = "Get asset value at specified date")]
-        public static double XA_Value(object[,] asset_table, object[,] price_array, string asset_code, string value_asset_code, double price_date)
+        public static double XA_Value(object[,] asset_table, object[,] price_array, object[,] transaction_table, string asset_code, string value_asset_code, double price_date)
         {
             if (asset_code == value_asset_code)
                 return 1;
 
             Asset asset = GetAsset(asset_table, asset_code);
-            double rate = 1;
-            // work down from sell asset
-            while (asset.base_code != asset.code) // otherwise its just 1
+            if (asset.port)
             {
-                double price = XA_Price(asset_table, price_array, asset.code, price_date);
-                if (price == 0)
-                    return 0;
-                else if (asset.invert)
-                    rate /= price;
-                else
-                    rate *= price;
-                if (asset.base_code == value_asset_code)
-                    return rate; // complete rate was found
-                asset = GetAsset(asset_table, asset.base_code);
+                // get list of holdings for this collection
+                Dictionary<string, double> holdings = new Dictionary<string, double>();
+                int transaction_rows = transaction_table.GetLength(0);
+                for (int transaction_row = 0; transaction_row < transaction_rows; transaction_row++)
+                {
+                    Transaction transaction;
+                    transaction.port = transaction_table[transaction_row, 0].ToString();
+                    transaction.date = GetDouble(transaction_table[transaction_row, 1]);
+                    transaction.asset = transaction_table[transaction_row, 2].ToString();
+                    transaction.account = transaction_table[transaction_row, 3].ToString();
+                    transaction.amount = GetDouble(transaction_table[transaction_row, 4]);
+
+                    if(transaction.port == asset.code && transaction.date <= price_date && transaction.account == "A" )
+                    {
+                        if (!holdings.ContainsKey(transaction.asset))
+                            holdings.Add(transaction.asset, 0);
+                        holdings[transaction.asset] += transaction.amount;
+                    }
+                }
+
+                return holdings.Count;
             }
-            // work back from value asset to final asset of previous step
-            Asset value_asset = GetAsset(asset_table, value_asset_code);
-            while (value_asset.base_code != value_asset.code) // otherwise its just 1
+            else
             {
-                double price = XA_Price(asset_table, price_array, value_asset.code, price_date);
-                if (price == 0)
-                    return 0;
-                else if (value_asset.invert)
-                    rate *= price;
-                else
-                    rate /= price;
-                if (value_asset.base_code == asset.code)
-                    return rate; // complete rate was found
-                value_asset = GetAsset(asset_table, value_asset.base_code);
+                double rate = 1;
+                // work down from sell asset
+                while (asset.base_code != asset.code) // otherwise its just 1
+                {
+                    double price = XA_Price(asset_table, price_array, asset.code, price_date);
+                    if (price == 0)
+                        return 0;
+                    else if (asset.invert)
+                        rate /= price;
+                    else
+                        rate *= price;
+                    if (asset.base_code == value_asset_code)
+                        return rate; // complete rate was found
+                    asset = GetAsset(asset_table, asset.base_code);
+                }
+                // work back from value asset to final asset of previous step
+                Asset value_asset = GetAsset(asset_table, value_asset_code);
+                while (value_asset.base_code != value_asset.code) // otherwise its just 1
+                {
+                    double price = XA_Price(asset_table, price_array, value_asset.code, price_date);
+                    if (price == 0)
+                        return 0;
+                    else if (value_asset.invert)
+                        rate *= price;
+                    else
+                        rate /= price;
+                    if (value_asset.base_code == asset.code)
+                        return rate; // complete rate was found
+                    value_asset = GetAsset(asset_table, value_asset.base_code);
+                }
+                // this should never be reached
+                return 0;
             }
-            // this should never be reached
-            return 0;
         }
     }
 }
