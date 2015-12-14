@@ -173,7 +173,11 @@ namespace ExcelAccounting
                     }
                 }
 
-                return holdings.Count;
+                // calculate the price from the holdings
+                double price = 0;
+                foreach(KeyValuePair<string, double> holding in holdings)
+                    price += holding.Value * XA_Value(asset_table, price_array, transaction_table, holding.Key, asset.base_code, price_date);
+                return price;
             }
             else
             {
