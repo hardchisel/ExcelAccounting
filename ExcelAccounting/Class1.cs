@@ -90,7 +90,7 @@ namespace ExcelAccounting
         }
 
         [ExcelFunction(Description = "Get asset price at specified date")]
-        public static double XA_Price(object[,] asset_table, object[,] price_array, string asset_code, double price_date)
+        public static double XA_Price(object[,] asset_table, object[,] price_array, object[,] transaction_table, string asset_code, double price_date)
         {
             Asset asset = GetAsset(asset_table, asset_code);
 
@@ -98,59 +98,6 @@ namespace ExcelAccounting
             if (asset_code == asset.base_code)
                 return 1;
 
-            int price_rows = price_array.GetLength(0);
-            int price_cols = price_array.GetLength(1);
-
-            double price = 0;
-            for (int price_col = 0; price_col < price_cols; price_col++)
-            {
-                // check each column header (asset code)
-                dynamic col_name = price_array[0, price_col];
-                if (col_name != null && col_name is string && col_name == asset_code)
-                {
-                    // found a matching column, work down rows
-                    for (int price_row = 1; price_row < price_rows; price_row++)
-                    {
-                        // check each row's date
-                        dynamic row_date = price_array[price_row, 0];
-                        if (row_date != null && row_date is double && row_date <= price_date)
-                        {
-                            // check if we exceeded requested date
-                            if (row_date > price_date)
-                                break;
-                            else
-                            // found a candidate row
-                            {
-                                if (price_row == (price_rows - 1) && price_date > row_date)
-                                {
-                                    // we requested a future date
-                                    price = 0;
-                                    break;
-                                }
-                                else
-                                {
-                                    // this could be the price, so save it
-                                    dynamic price_candidate = price_array[price_row, price_col];
-                                    if (price_candidate != null && price_candidate is double)
-                                        price = price_candidate;
-                                }
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-
-            return price;
-        }
-
-        [ExcelFunction(Description = "Get asset value at specified date")]
-        public static double XA_Value(object[,] asset_table, object[,] price_array, object[,] transaction_table, string asset_code, string value_asset_code, double price_date)
-        {
-            if (asset_code == value_asset_code)
-                return 1;
-
-            Asset asset = GetAsset(asset_table, asset_code);
             if (asset.port)
             {
                 // get list of holdings for this collection
@@ -165,7 +112,7 @@ namespace ExcelAccounting
                     transaction.account = transaction_table[transaction_row, 3].ToString();
                     transaction.amount = GetDouble(transaction_table[transaction_row, 4]);
 
-                    if(transaction.port == asset.code && transaction.date <= price_date && transaction.account == "A" )
+                    if (transaction.port == asset.code && transaction.date <= price_date && transaction.account == "A")
                     {
                         if (!holdings.ContainsKey(transaction.asset))
                             holdings.Add(transaction.asset, 0);
@@ -175,45 +122,100 @@ namespace ExcelAccounting
 
                 // calculate the price from the holdings
                 double price = 0;
-                foreach(KeyValuePair<string, double> holding in holdings)
+                foreach (KeyValuePair<string, double> holding in holdings)
                     price += holding.Value * XA_Value(asset_table, price_array, transaction_table, holding.Key, asset.base_code, price_date);
                 return price;
             }
             else
             {
-                double rate = 1;
-                // work down from sell asset
-                while (asset.base_code != asset.code) // otherwise its just 1
+
+                int price_rows = price_array.GetLength(0);
+                int price_cols = price_array.GetLength(1);
+
+                double price = 0;
+                for (int price_col = 0; price_col < price_cols; price_col++)
                 {
-                    double price = XA_Price(asset_table, price_array, asset.code, price_date);
-                    if (price == 0)
-                        return 0;
-                    else if (asset.invert)
-                        rate /= price;
-                    else
-                        rate *= price;
-                    if (asset.base_code == value_asset_code)
-                        return rate; // complete rate was found
-                    asset = GetAsset(asset_table, asset.base_code);
+                    // check each column header (asset code)
+                    dynamic col_name = price_array[0, price_col];
+                    if (col_name != null && col_name is string && col_name == asset_code)
+                    {
+                        // found a matching column, work down rows
+                        for (int price_row = 1; price_row < price_rows; price_row++)
+                        {
+                            // check each row's date
+                            dynamic row_date = price_array[price_row, 0];
+                            if (row_date != null && row_date is double && row_date <= price_date)
+                            {
+                                // check if we exceeded requested date
+                                if (row_date > price_date)
+                                    break;
+                                else
+                                // found a candidate row
+                                {
+                                    if (price_row == (price_rows - 1) && price_date > row_date)
+                                    {
+                                        // we requested a future date
+                                        price = 0;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        // this could be the price, so save it
+                                        dynamic price_candidate = price_array[price_row, price_col];
+                                        if (price_candidate != null && price_candidate is double)
+                                            price = price_candidate;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
                 }
-                // work back from value asset to final asset of previous step
-                Asset value_asset = GetAsset(asset_table, value_asset_code);
-                while (value_asset.base_code != value_asset.code) // otherwise its just 1
-                {
-                    double price = XA_Price(asset_table, price_array, value_asset.code, price_date);
-                    if (price == 0)
-                        return 0;
-                    else if (value_asset.invert)
-                        rate *= price;
-                    else
-                        rate /= price;
-                    if (value_asset.base_code == asset.code)
-                        return rate; // complete rate was found
-                    value_asset = GetAsset(asset_table, value_asset.base_code);
-                }
-                // this should never be reached
-                return 0;
+
+                return price;
             }
+        }
+
+        [ExcelFunction(Description = "Get asset value at specified date")]
+        public static double XA_Value(object[,] asset_table, object[,] price_array, object[,] transaction_table, string asset_code, string value_asset_code, double price_date)
+        {
+            if (asset_code == value_asset_code)
+                return 1;
+
+            Asset asset = GetAsset(asset_table, asset_code);
+
+            double rate = 1;
+            // work down from sell asset
+            while (asset.base_code != asset.code) // otherwise its just 1
+            {
+                double price = XA_Price(asset_table, price_array, transaction_table, asset.code, price_date);
+                if (price == 0)
+                    return 0;
+                else if (asset.invert)
+                    rate /= price;
+                else
+                    rate *= price;
+                if (asset.base_code == value_asset_code)
+                    return rate; // complete rate was found
+                asset = GetAsset(asset_table, asset.base_code);
+            }
+            // work back from value asset to final asset of previous step
+            Asset value_asset = GetAsset(asset_table, value_asset_code);
+            while (value_asset.base_code != value_asset.code) // otherwise its just 1
+            {
+                double price = XA_Price(asset_table, price_array, transaction_table, value_asset.code, price_date);
+                if (price == 0)
+                    return 0;
+                else if (value_asset.invert)
+                    rate *= price;
+                else
+                    rate /= price;
+                if (value_asset.base_code == asset.code)
+                    return rate; // complete rate was found
+                value_asset = GetAsset(asset_table, value_asset.base_code);
+            }
+            // this should never be reached
+            return 0;
         }
     }
 }
