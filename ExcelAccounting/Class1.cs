@@ -19,6 +19,7 @@ namespace ExcelAccounting
 
     public struct Transaction
     {
+        public double journal;
         public string port;
         public double date;
         public string asset;
@@ -106,11 +107,12 @@ namespace ExcelAccounting
                 for (int transaction_row = 0; transaction_row < transaction_rows; transaction_row++)
                 {
                     Transaction transaction;
-                    transaction.port = transaction_table[transaction_row, 0].ToString();
-                    transaction.date = GetDouble(transaction_table[transaction_row, 1]);
-                    transaction.asset = transaction_table[transaction_row, 2].ToString();
-                    transaction.account = transaction_table[transaction_row, 3].ToString();
-                    transaction.amount = GetDouble(transaction_table[transaction_row, 4]);
+                    transaction.journal = GetDouble(transaction_table[transaction_row, 0]);
+                    transaction.port = transaction_table[transaction_row, 1].ToString();
+                    transaction.date = GetDouble(transaction_table[transaction_row, 2]);
+                    transaction.asset = transaction_table[transaction_row, 3].ToString();
+                    transaction.account = transaction_table[transaction_row, 4].ToString();
+                    transaction.amount = GetDouble(transaction_table[transaction_row, 5]);
 
                     if (transaction.port == asset.code && transaction.date <= price_date && transaction.account == "A")
                     {
@@ -136,7 +138,7 @@ namespace ExcelAccounting
                 for (int price_col = 0; price_col < price_cols; price_col++)
                 {
                     // check each column header (asset code)
-                    dynamic col_name = price_array[0, price_col];
+                    dynamic col_name = price_array[-1, price_col];
                     if (col_name != null && col_name is string && col_name == asset_code)
                     {
                         // found a matching column, work down rows
