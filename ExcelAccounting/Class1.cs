@@ -11,7 +11,6 @@ namespace ExcelAccounting
     public struct Asset
     {
         public string code;
-        public string name;
         public string base_code;
         public bool invert;
         public bool port;
@@ -22,8 +21,8 @@ namespace ExcelAccounting
         public double journal;
         public string port;
         public double date;
-        public string asset;
         public string account;
+        public string asset;
         public double amount;
     }
 
@@ -46,7 +45,6 @@ namespace ExcelAccounting
         {
             Asset asset;
             asset.code = "";
-            asset.name = "";
             asset.base_code = "";
             asset.invert = false;
             asset.port = false;
@@ -61,10 +59,9 @@ namespace ExcelAccounting
                 if (code != null && code is string && code == asset_code)
                 {
                     asset.code = asset_table[row, 0].ToString();
-                    asset.name = asset_table[row, 1].ToString();
-                    asset.base_code = asset_table[row, 2].ToString().ToString();
-                    asset.invert = GetBoolean(asset_table[row, 3]);
-                    asset.port = GetBoolean(asset_table[row, 4]);
+                    asset.base_code = asset_table[row, 1].ToString().ToString();
+                    asset.invert = GetBoolean(asset_table[row, 2]);
+                    asset.port = GetBoolean(asset_table[row, 3]);
                     break;
                 }
             }
@@ -110,8 +107,8 @@ namespace ExcelAccounting
                     transaction.journal = GetDouble(transaction_table[transaction_row, 0]);
                     transaction.port = transaction_table[transaction_row, 1].ToString();
                     transaction.date = GetDouble(transaction_table[transaction_row, 2]);
-                    transaction.asset = transaction_table[transaction_row, 3].ToString();
-                    transaction.account = transaction_table[transaction_row, 4].ToString();
+                    transaction.account = transaction_table[transaction_row, 3].ToString();
+                    transaction.asset = transaction_table[transaction_row, 4].ToString();
                     transaction.amount = GetDouble(transaction_table[transaction_row, 5]);
 
                     if (transaction.port == asset.code && transaction.date <= price_date && transaction.account == "A")
