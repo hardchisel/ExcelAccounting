@@ -138,7 +138,7 @@ namespace ExcelAccounting
                 for (int price_col = 0; price_col < price_cols; price_col++)
                 {
                     // check each column header (asset code)
-                    dynamic col_name = price_array[-1, price_col];
+                    dynamic col_name = price_array[0, price_col];
                     if (col_name != null && col_name is string && col_name == asset_code)
                     {
                         // found a matching column, work down rows
