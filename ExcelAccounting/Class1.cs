@@ -21,7 +21,7 @@ namespace ExcelAccounting
         public double journal;
         public string port;
         public double date;
-        public string account;
+        public char account;
         public string asset;
         public double amount;
     }
@@ -107,11 +107,11 @@ namespace ExcelAccounting
                     transaction.journal = GetDouble(transaction_table[transaction_row, 0]);
                     transaction.port = transaction_table[transaction_row, 1].ToString();
                     transaction.date = GetDouble(transaction_table[transaction_row, 2]);
-                    transaction.account = transaction_table[transaction_row, 3].ToString();
+                    transaction.account = transaction_table[transaction_row, 3].ToString()[0];
                     transaction.asset = transaction_table[transaction_row, 4].ToString();
                     transaction.amount = GetDouble(transaction_table[transaction_row, 5]);
 
-                    if (transaction.port == asset.code && transaction.date <= price_date && transaction.account == "A")
+                    if (transaction.port == asset.code && transaction.date <= price_date && transaction.account == 'A')
                     {
                         if (!holdings.ContainsKey(transaction.asset))
                             holdings.Add(transaction.asset, 0);
